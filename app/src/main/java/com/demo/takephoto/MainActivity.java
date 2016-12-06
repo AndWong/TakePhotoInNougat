@@ -30,7 +30,7 @@ public class MainActivity extends AppCompatActivity {
     private Button takePhoto;
     private Button pickPhoto;
     private ImageView imageView;
-    private Uri outputUri;
+    private Uri outputUri; //照片 截取输出的outputUri， 只能使用 Uri.fromFile，不能用FileProvider.getUriForFile
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
