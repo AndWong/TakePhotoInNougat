@@ -123,10 +123,12 @@ public class MainActivity extends AppCompatActivity {
         intent.putExtra("aspectX", 1);
         intent.putExtra("aspectY", 1);
         int iconSize = 200;
-        intent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri);
         intent.putExtra("outputX", iconSize);
         intent.putExtra("outputY", iconSize);
         intent.putExtra("return-data", true);
+        if (Build.VERSION.SDK_INT >= 24) {
+            intent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri); // 魅族部分手机会有问题,例如 Meizu M351 4.4.4
+        }
         return intent;
     }
 
@@ -143,12 +145,77 @@ public class MainActivity extends AppCompatActivity {
                     doCropPhoto(imageUri);
                     break;
                 case REQUEST_TYPE_CROP:
-                    if (null != outputUri) {
-                        Bitmap photo = BitmapFactory.decodeFile(outputUri.getPath());
+                    /* 可兼容7.0与魅族手机 */
+                    if (Build.VERSION.SDK_INT >= 24) {
+                        if (null != outputUri) {
+                            Bitmap photo = BitmapFactory.decodeFile(outputUri.getPath());
+                            imageView.setImageBitmap(photo);
+                        }
+                    } else {
+                        Bitmap photo = data.getParcelableExtra("data");
+                        /**
+                         * 虽然部分魅族的机器没有返回data字段，但是返回了filePath，是相册选中地址的路径，
+                         * 可以把这个图片按尺寸获取一下。注意可能丢失剪切效果，目前暂时这样处理的。
+                         */
+                        if (null == photo) {
+                            String filePath = data.getStringExtra("filePath");
+                            if (filePath.length() > 0) {
+                                photo = decodeSampledBitmapFromFile(filePath, 250, 250);
+                            }
+                        }
                         imageView.setImageBitmap(photo);
                     }
                     break;
             }
         }
+    }
+
+    /**
+     * 由得到的采样率对图片进行解析
+     *
+     * @param filename
+     * @param reqWidth
+     * @param reqHeight
+     * @return
+     */
+    private Bitmap decodeSampledBitmapFromFile(String filename, int reqWidth, int reqHeight) {
+
+        // First decode with inJustDecodeBounds=true to check dimensions
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(filename, options);
+
+        // Calculate inSampleSize
+        options.inSampleSize = calculateInSampleSize(options, reqWidth, reqHeight);
+
+        // Decode bitmap with inSampleSize set
+        options.inJustDecodeBounds = false;
+        return BitmapFactory.decodeFile(filename, options);
+    }
+
+
+    /**
+     * 计算实际采样率
+     *
+     * @param options
+     * @param reqWidth
+     * @param reqHeight
+     * @return
+     */
+    private int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+        // Raw height and width of image
+        final int height = options.outHeight;
+        final int width = options.outWidth;
+        int inSampleSize = 1;
+
+        if (height > reqHeight || width > reqWidth) {
+            if (width > height) {
+                inSampleSize = Math.round((float) height / (float) reqHeight);
+            } else {
+                inSampleSize = Math.round((float) width / (float) reqWidth);
+            }
+
+        }
+        return inSampleSize;
     }
 }
