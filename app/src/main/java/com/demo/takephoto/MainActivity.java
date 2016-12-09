@@ -11,6 +11,7 @@ import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v4.content.FileProvider;
 import android.support.v7.app.AppCompatActivity;
+import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
@@ -125,8 +126,8 @@ public class MainActivity extends AppCompatActivity {
         int iconSize = 200;
         intent.putExtra("outputX", iconSize);
         intent.putExtra("outputY", iconSize);
-        intent.putExtra("return-data", true);
-        if (Build.VERSION.SDK_INT >= 24) {
+        intent.putExtra("return-data", isReturnData());
+        if (!isSpecifyMachine("meizu")) {
             intent.putExtra(MediaStore.EXTRA_OUTPUT, outputUri); // 魅族部分手机会有问题,例如 Meizu M351 4.4.4
         }
         return intent;
@@ -145,13 +146,7 @@ public class MainActivity extends AppCompatActivity {
                     doCropPhoto(imageUri);
                     break;
                 case REQUEST_TYPE_CROP:
-                    /* 可兼容7.0与魅族手机 */
-                    if (Build.VERSION.SDK_INT >= 24) {
-                        if (null != outputUri) {
-                            Bitmap photo = BitmapFactory.decodeFile(outputUri.getPath());
-                            imageView.setImageBitmap(photo);
-                        }
-                    } else {
+                    if (isSpecifyMachine("meizu")) {
                         Bitmap photo = data.getParcelableExtra("data");
                         /**
                          * 虽然部分魅族的机器没有返回data字段，但是返回了filePath，是相册选中地址的路径，
@@ -164,6 +159,11 @@ public class MainActivity extends AppCompatActivity {
                             }
                         }
                         imageView.setImageBitmap(photo);
+                    } else {
+                        if (null != outputUri) {
+                            Bitmap photo = BitmapFactory.decodeFile(outputUri.getPath());
+                            imageView.setImageBitmap(photo);
+                        }
                     }
                     break;
             }
@@ -217,5 +217,33 @@ public class MainActivity extends AppCompatActivity {
 
         }
         return inSampleSize;
+    }
+
+    /**
+     * 是否裁剪之后返回数据
+     **/
+    private static boolean isReturnData() {
+        if (isSpecifyMachine("lenovo") || isSpecifyMachine("meizu")) {
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * 是否是指定机器
+     *
+     * @return
+     */
+    private static boolean isSpecifyMachine(String name) {
+        if (TextUtils.isEmpty(name)) {
+            return false;
+        }
+        String manufacturer = android.os.Build.MANUFACTURER;
+        if (!TextUtils.isEmpty(manufacturer)) {
+            if (manufacturer.toLowerCase().contains(name)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
